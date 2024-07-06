@@ -28,25 +28,30 @@ def plot_exponential_fit(max_power):
     powers_of_two = [2**i for i in range(1, max_power + 1)]
     cycle_lengths = [find_shuffle_cycle(m) for m in powers_of_two]
 
-    # Plot original data
     plt.figure(figsize=(10, 6))
-    plt.scatter(powers_of_two, cycle_lengths, color='red', label='Data')
+    plt.scatter(powers_of_two, cycle_lengths, label='实践法 (实际值)', color='b', marker='o')
 
-    # Fit the data using log2 function
-    fitted_cycle_lengths = [np.log2(m) for m in powers_of_two]
+    coefficients = np.polyfit(np.log2(powers_of_two), cycle_lengths, 1)
+    polynomial = np.poly1d(coefficients)
 
-    # Plot fitted curve
-    plt.plot(powers_of_two, fitted_cycle_lengths, label='Fitted $log_2(m)$', linestyle='--')
+    x_fit = np.linspace(min(powers_of_two), max(powers_of_two), 1000)
+    y_fit = polynomial(np.log2(x_fit))
 
-    plt.title('Cycle Lengths for Perfect Shuffles (Powers of 2)')
-    plt.xlabel('Number of Cards (m)')
-    plt.ylabel('Cycle Length (n)')
-    plt.xscale('log', base=2)
-    plt.yscale('log', base=2)
+    plt.plot(x_fit, y_fit, label='拟合曲线 $log_2(m)$', color='r', linestyle='--')
+    plt.xlabel('牌堆大小 (m)', fontsize=14)
+    plt.ylabel('恢复原状的次数 (n)', fontsize=14)
+    plt.title('牌堆大小与恢复原状次数的关系', fontsize=16)
     plt.legend()
-    plt.grid(True, which="both", ls="--")
     plt.show()
 
+    y_pred = polynomial(np.log2(powers_of_two))
+    r2 = np.corrcoef(cycle_lengths, y_pred)[0, 1]**2
+    mse = np.mean((cycle_lengths - y_pred)**2)
+
+    print(f"拟合方程: y = {coefficients[0]:.4f} * log2(x) + {coefficients[1]:.4f}")
+    print(f"R²评分: {r2:.4f}")
+    print(f"均方误差: {mse:.4f}")
+
 if __name__ == "__main__":
-    max_power = 10  # Example maximum power of 2
+    max_power = 1000  # Example maximum power of 2
     plot_exponential_fit(max_power)

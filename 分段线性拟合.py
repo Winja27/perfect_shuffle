@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.linear_model import LinearRegression
 
-deck_sizes = np.arange(2, 1000)
+# 假设我们已经有deck_sizes和cycles的数据
+deck_sizes = np.arange(2, 520)  # 2到51张牌
 cycles = []
+
 
 def perfect_shuffle_practice(arr):
     n = len(arr)
@@ -18,6 +20,7 @@ def perfect_shuffle_practice(arr):
         b[2 * (i - mid) + 1] = arr[i]
     return b
 
+
 def find_shuffle_cycle_practice(m):
     original = list(range(m))
     shuffled = original[:]
@@ -28,13 +31,17 @@ def find_shuffle_cycle_practice(m):
         if shuffled == original:
             return count
 
+
+# 计算cycles
 for size in deck_sizes:
     cycle = find_shuffle_cycle_practice(size)
     cycles.append(cycle)
 
+# 转换为numpy数组
 deck_sizes = np.array(deck_sizes)
 cycles = np.array(cycles)
 
+# 数据可视化
 plt.figure(figsize=(10, 6))
 plt.scatter(deck_sizes, cycles, label='实践法 (实际值)', color='b', marker='o')
 plt.xlabel('牌堆大小', fontsize=14)
@@ -43,29 +50,39 @@ plt.title('牌堆大小与恢复原状次数的关系', fontsize=16)
 plt.legend()
 plt.show()
 
-# 数据建模：尝试多项式拟合
-degree = 3  # 假设一个三次多项式
-coefficients = np.polyfit(deck_sizes, cycles, degree)
-polynomial = np.poly1d(coefficients)
 
-# 计算拟合曲线的y值
-x_fit = np.linspace(deck_sizes.min(), deck_sizes.max(), 1000)
-y_fit = polynomial(x_fit)
+# 分段线性拟合
+def piecewise_linear_fit(x, y, breakpoints):
+    models = []
+    for i in range(len(breakpoints) - 1):
+        mask = (x >= breakpoints[i]) & (x < breakpoints[i + 1])
+        x_segment = x[mask].reshape(-1, 1)
+        y_segment = y[mask]
+
+        model = LinearRegression()
+        model.fit(x_segment, y_segment)
+        models.append((model, breakpoints[i], breakpoints[i + 1]))
+    return models
+
+
+# 假设我们根据数据分布选择了一些断点
+breakpoints = [2, 10, 20, 30, 40, 52]
+
+models = piecewise_linear_fit(deck_sizes, cycles, breakpoints)
 
 plt.figure(figsize=(10, 6))
 plt.scatter(deck_sizes, cycles, label='实践法 (实际值)', color='b', marker='o')
-plt.plot(x_fit, y_fit, label=f'{degree}次多项式拟合', color='r')
+
+for model, start, end in models:
+    x_fit = np.linspace(start, end, 100).reshape(-1, 1)
+    y_fit = model.predict(x_fit)
+    plt.plot(x_fit, y_fit, label=f'线性拟合 [{start}, {end})')
+
 plt.xlabel('牌堆大小', fontsize=14)
 plt.ylabel('恢复原状的次数', fontsize=14)
 plt.title('牌堆大小与恢复原状次数的关系', fontsize=16)
 plt.legend()
 plt.show()
 
-print(f"多项式系数: {coefficients}")
-
-y_pred = polynomial(deck_sizes)
-r2 = r2_score(cycles, y_pred)
-mse = mean_squared_error(cycles, y_pred)
-
-print(f"R²评分: {r2}")
-print(f"均方误差: {mse}")
+for model, start, end in models:
+    print(f"分段 [{start}, {end}): 斜率 = {model.coef_[0]}, 截距 = {model.intercept_}")
